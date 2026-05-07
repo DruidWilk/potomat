@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>POTOMAT — pomiar poziomu smrodu</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body data-state="idle">
+  <video id="bg" src="assets/background.mp4" muted playsinline preload="auto" loop></video>
+  <div class="overlay"></div>
+  <video id="cam" muted playsinline aria-hidden="true"></video>
+
+  <main>
+    <header>
+      <h1>POTOMAT</h1>
+      <p class="tagline">Profesjonalny pomiar poziomu smrodu</p>
+    </header>
+
+    <section id="meter" hidden aria-live="polite">
+      <p class="meter-label">Pomiar w toku…</p>
+      <div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="bar-fill" id="bar-fill"></div>
+      </div>
+      <p class="hint">Przyłóż telefon do osoby badanej</p>
+    </section>
+
+    <section id="result" hidden aria-live="polite">
+      <p class="result-label">Wynik pomiaru:</p>
+      <p class="result-value" id="result-value"></p>
+      <p class="result-comment" id="result-comment"></p>
+    </section>
+
+    <div class="actions">
+      <button id="start-btn" type="button">POTOMATUJ</button>
+      <button id="reset-btn" type="button" hidden>RESETUJ</button>
+    </div>
+
+    <p id="error" class="error" hidden></p>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
