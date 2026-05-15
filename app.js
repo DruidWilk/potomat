@@ -320,11 +320,16 @@
   els.resetBtn.addEventListener('click', reset);
 
   async function showFirstFrame() {
+    const v = els.bg;
     try {
-      await els.bg.play();
+      await v.play();
+      if (typeof v.requestVideoFrameCallback === 'function') {
+        await new Promise(r => v.requestVideoFrameCallback(() => r()));
+      } else {
+        await new Promise(r => setTimeout(r, 250));
+      }
       if (els.body.dataset.state === 'idle') {
-        els.bg.pause();
-        els.bg.currentTime = 0;
+        v.pause();
       }
     } catch (_) { /* autoplay blocked — first interaction will start it */ }
   }
