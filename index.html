@@ -11,15 +11,21 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body data-state="idle">
-  <video id="bg" src="assets/background.mp4" muted playsinline preload="auto" loop></video>
+  <video id="bg" src="assets/background.mp4" muted playsinline preload="auto" loop poster="assets/poster.jpg"></video>
+  <img id="bg-poster" src="assets/poster.jpg" alt="" aria-hidden="true">
   <div class="overlay"></div>
   <video id="cam" muted playsinline aria-hidden="true"></video>
 
   <main>
     <header>
-      <h1>POTOMAT</h1>
-      <p class="tagline">Profesjonalny pomiar poziomu smrodu</p>
+      <h1>Greg Ter Ölçer</h1>
+      <p class="tagline">Turecki specjalista medycyny bliskowschodniej</p>
     </header>
+
+    <section id="calibration" hidden aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="calibration-label">KALIBRACJA WĘCHU</p>
+    </section>
 
     <section id="meter" hidden aria-live="polite">
       <p class="meter-label">Pomiar w toku…</p>

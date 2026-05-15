@@ -14,10 +14,12 @@
   const els = {
     body: document.body,
     bg: document.getElementById('bg'),
+    poster: document.getElementById('bg-poster'),
     cam: document.getElementById('cam'),
     startBtn: document.getElementById('start-btn'),
     resetBtn: document.getElementById('reset-btn'),
     meter: document.getElementById('meter'),
+    calibration: document.getElementById('calibration'),
     barFill: document.getElementById('bar-fill'),
     bar: document.querySelector('.bar'),
     result: document.getElementById('result'),
@@ -29,7 +31,9 @@
   let stream = null;
   let rafId = null;
   let fallbackTimer = null;
+  let calibrationTimer = null;
   let fill = 0;
+  let sniffStarted = false;
   let audioCtx = null;
   let canvas = null;
   let ctx = null;
@@ -39,6 +43,7 @@
   const FILL_RATE = 2.6;
   const DRAIN_RATE = 1.3;
   const FALLBACK_MS = 3200;
+  const CALIBRATION_MS = 3000;
 
   function setState(s) {
     els.body.dataset.state = s;
@@ -100,21 +105,37 @@
     const ac = getAudioCtx();
     if (!ac) return;
     const now = ac.currentTime;
-    [880, 1320].forEach((freq, i) => {
+    const partials = [
+      { freq: 1568, gain: 0.38, decay: 1.6 },
+      { freq: 3136, gain: 0.14, decay: 0.9 },
+      { freq: 4704, gain: 0.05, decay: 0.5 },
+    ];
+    partials.forEach(p => {
       const osc = ac.createOscillator();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now);
-      osc.frequency.exponentialRampToValueAtTime(freq * 0.5, now + 0.7);
+      osc.frequency.value = p.freq;
       const gain = ac.createGain();
-      const peak = i === 0 ? 0.32 : 0.18;
       gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(peak, now + 0.015);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.85);
+      gain.gain.linearRampToValueAtTime(p.gain, now + 0.006);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + p.decay);
       osc.connect(gain);
       gain.connect(ac.destination);
       osc.start(now);
-      osc.stop(now + 0.9);
+      osc.stop(now + p.decay + 0.05);
     });
+  }
+
+  async function preflightCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' } },
+        audio: false,
+      });
+      s.getTracks().forEach(t => t.stop());
+    } catch (err) {
+      console.warn('Camera preflight failed:', err);
+    }
   }
 
   async function startCamera() {
@@ -166,9 +187,14 @@
   }
 
   function updateBar(value) {
+    const prev = fill;
     fill = Math.max(0, Math.min(100, value));
     els.barFill.style.width = fill + '%';
     els.bar.setAttribute('aria-valuenow', String(Math.round(fill)));
+    if (!sniffStarted && fill > 0 && prev <= 0) {
+      sniffStarted = true;
+      playSniff();
+    }
   }
 
   function tick() {
@@ -226,18 +252,26 @@
 
     els.meter.hidden = true;
     els.result.hidden = false;
+    els.startBtn.hidden = true;
+    els.resetBtn.hidden = false;
     setState('result');
   }
 
   async function start() {
     clearError();
-    setState('measuring');
-    els.meter.hidden = false;
+    setState('calibrating');
+    els.calibration.hidden = false;
+    els.meter.hidden = true;
     els.result.hidden = true;
+    els.startBtn.hidden = true;
+    els.resetBtn.hidden = true;
+    sniffStarted = false;
+    fill = 0;
     updateBar(0);
 
     getAudioCtx();
 
+    els.poster.hidden = true;
     try {
       els.bg.currentTime = 0;
       await els.bg.play();
@@ -245,37 +279,54 @@
       console.warn('Background video play failed:', err);
     }
 
-    playSniff();
+    calibrationTimer = setTimeout(async () => {
+      calibrationTimer = null;
+      if (els.body.dataset.state !== 'calibrating') return;
 
-    const ok = await startCamera();
-    if (!ok) {
-      showError('Brak dostępu do kamery — symulacja pomiaru.');
-      startFallback();
-      return;
-    }
-    rafId = requestAnimationFrame(tick);
+      els.calibration.hidden = true;
+      els.meter.hidden = false;
+      setState('measuring');
+
+      const ok = await startCamera();
+      if (!ok) {
+        showError('Brak dostępu do kamery — symulacja pomiaru.');
+        startFallback();
+        return;
+      }
+      rafId = requestAnimationFrame(tick);
+    }, CALIBRATION_MS);
   }
 
   function reset() {
     if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
     if (fallbackTimer) { cancelAnimationFrame(fallbackTimer); fallbackTimer = null; }
+    if (calibrationTimer) { clearTimeout(calibrationTimer); calibrationTimer = null; }
     stopCamera();
     clearError();
+    sniffStarted = false;
+    fill = 0;
     updateBar(0);
     try {
       els.bg.pause();
       els.bg.currentTime = 0;
     } catch (_) {}
+    els.poster.hidden = false;
+    els.calibration.hidden = true;
     els.meter.hidden = true;
     els.result.hidden = true;
+    els.startBtn.hidden = false;
+    els.resetBtn.hidden = true;
     setState('idle');
   }
 
   els.startBtn.addEventListener('click', start);
   els.resetBtn.addEventListener('click', reset);
 
+  preflightCamera();
+
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden && els.body.dataset.state === 'measuring') {
+    const s = els.body.dataset.state;
+    if (document.hidden && (s === 'measuring' || s === 'calibrating')) {
       reset();
     }
   });
