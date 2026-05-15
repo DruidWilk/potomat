@@ -20,7 +20,7 @@ html, body {
   -webkit-tap-highlight-color: transparent;
 }
 
-#bg {
+#bg, #bg-poster {
   position: fixed;
   inset: 0;
   width: 100%;

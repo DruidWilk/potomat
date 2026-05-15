@@ -14,6 +14,7 @@
   const els = {
     body: document.body,
     bg: document.getElementById('bg'),
+    poster: document.getElementById('bg-poster'),
     cam: document.getElementById('cam'),
     startBtn: document.getElementById('start-btn'),
     resetBtn: document.getElementById('reset-btn'),
@@ -270,6 +271,7 @@
 
     getAudioCtx();
 
+    els.poster.hidden = true;
     try {
       els.bg.currentTime = 0;
       await els.bg.play();
@@ -308,6 +310,7 @@
       els.bg.pause();
       els.bg.currentTime = 0;
     } catch (_) {}
+    els.poster.hidden = false;
     els.calibration.hidden = true;
     els.meter.hidden = true;
     els.result.hidden = true;
@@ -318,26 +321,6 @@
 
   els.startBtn.addEventListener('click', start);
   els.resetBtn.addEventListener('click', reset);
-
-  async function showFirstFrame() {
-    const v = els.bg;
-    try {
-      await v.play();
-      if (typeof v.requestVideoFrameCallback === 'function') {
-        await new Promise(r => v.requestVideoFrameCallback(() => r()));
-      } else {
-        await new Promise(r => setTimeout(r, 250));
-      }
-      if (els.body.dataset.state === 'idle') {
-        v.pause();
-      }
-    } catch (_) { /* autoplay blocked — first interaction will start it */ }
-  }
-  if (els.bg.readyState >= 2) {
-    showFirstFrame();
-  } else {
-    els.bg.addEventListener('loadeddata', showFirstFrame, { once: true });
-  }
 
   preflightCamera();
 
